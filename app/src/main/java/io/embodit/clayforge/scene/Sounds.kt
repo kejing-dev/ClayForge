@@ -31,8 +31,11 @@ class Sounds(context: Context) {
         }
     }
 
-    /** +8 dB over the design's gains: at the design values the 30 s sample measured RMS −27.6 dBFS (gate ≥ −20, deviation). */
-    private val boostDb = 8f
+    /**
+     * +9 dB over the design's gains: at the design values the 30 s sample measured RMS −27.6 dBFS (gate ≥ −20, deviation);
+     * v0.1.2 +8 → +9 dB (render −20.3 → −19.5 dBFS), the kiln roar / ting 1 dB under the design so the peak stays −1.4 dBFS.
+     */
+    private val boostDb = 9f
 
     private fun gain(db: Float): Float {
         val p = Studio.prefs
@@ -77,8 +80,8 @@ class Sounds(context: Context) {
 
     fun woodTap() = play("wood_tap", 3, -10f)
     fun jar() = play("jar_clink", 2, -10f)
-    fun kilnRoar() = play("kiln_roar", 1, -8f)
-    fun kilnTing() = play("kiln_ting", 1, -8f)
+    fun kilnRoar() = play("kiln_roar", 1, -9f)
+    fun kilnTing() = play("kiln_ting", 1, -9f)
     /** Door hinge / latch (design kiln sound group: open, latch「咔」). */
     fun kilnLatch() = play("kiln_latch", 1, -10f)
     fun kilnDoor() = play("wood_tap", 3, -14f, rate = 0.8f)
