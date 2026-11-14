@@ -286,6 +286,7 @@ object Studio {
     fun strokeEnd() {
         val s = scene ?: return
         val sculpted = s.sculptor.phase == Sculptor.Phase.SCULPT
+        CfLog.i("STROKE end ${s.sculptor.diag()}")
         val step = s.sculptor.release()
         if (sculpted) lastDragEnd = SystemClock.uptimeMillis()
         sound.strokeEnd()

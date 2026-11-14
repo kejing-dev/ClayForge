@@ -32,6 +32,8 @@ import io.embodit.clayforge.Mode
 import io.embodit.clayforge.Phase
 import io.embodit.clayforge.Studio
 import io.embodit.clayforge.domain.Brush
+import io.embodit.clayforge.domain.CtrlAct
+import io.embodit.clayforge.domain.CtrlChannel
 import io.embodit.clayforge.domain.ChunkMesh
 import io.embodit.clayforge.domain.ClayField
 import io.embodit.clayforge.domain.Glaze
@@ -994,17 +996,21 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
             val tip = bp.toLocal(c.position + c.forward * Layout.CTRL_TOOL_LEN)
             val held = controllers.triggerHeld(h)
             val presses = controllers.takeTriggerPresses(h)
-            if (absSrc == null && held && presses > 0) {
+            val slot = if (absSrc == null && held && presses > 0) slotAt(tip, 0.02f) else null
+            val act = CtrlChannel.decide(strokeOn = absSrc == Src.CTRL, otherStroke = absSrc != null && absSrc != Src.CTRL, held = held, presses = presses,
+                ownSlot = slot != null && slot == Studio.brush, otherSlot = slot != null && slot != Studio.brush,
+                canSculpt = Studio.canSculpt, nearClay = presses > 0 && nearClay(tip, Studio.size.r * 1.5f + 0.003f))
+            if (presses > 0) CfLog.i("CTRL trigger hand=$h presses=$presses held=$held act=$act tip=$tip")
+            when (act) {
                 // trigger at a tray slot: another tool = swap, its own slot = put it back
-                val slot = slotAt(tip, 0.02f)
-                when {
-                    slot != null && slot == Studio.brush -> unmountController("own slot")
-                    slot != null -> { Studio.tapSlot(slot, "ctrl"); mountController(h, "swap") }
-                    Studio.canSculpt && nearClay(tip, Studio.size.r * 1.5f + 0.003f) -> absBegin(tip, Src.CTRL)
-                    else -> CfLog.i("CTRL trigger away from the clay tip=$tip")
-                }
-            } else if (absSrc == Src.CTRL && held) absMove(tip, now)
-            else if (absSrc == Src.CTRL && !held) absEnd()
+                CtrlAct.PUT_BACK -> unmountController("own slot")
+                CtrlAct.SWAP -> { Studio.tapSlot(slot!!, "ctrl"); mountController(h, "swap") }
+                CtrlAct.BEGIN -> absBegin(tip, Src.CTRL)
+                CtrlAct.AWAY -> CfLog.i("CTRL trigger away from the clay tip=$tip")
+                CtrlAct.MOVE -> absMove(tip, now)
+                CtrlAct.END -> absEnd()
+                CtrlAct.NONE -> {}
+            }
             if (controllers.takeBackPresses() > 0) unmountController("B/Y")
         } else { controllers.takeTriggerPresses(0); controllers.takeTriggerPresses(1); controllers.takeBackPresses() }
         // thumbstick: x = turn (push 90°, hold 60°/s; bench move: 15° per push), y = size up / down
@@ -1123,18 +1129,15 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
 
     fun injectController(tipLocal: V3?, pressed: Boolean) {
         val bp = benchPose ?: return
-        if (tipLocal == null) { controllers.injected = null; return }
+        if (tipLocal == null) { controllers.inject(null, false); return }
         // the controller sits 0.10 m behind the tip along the handle direction h (right, up, toward the user)
         val fwdLocal = (-Layout.HANDLE).normalized()
         val grip = bp.toWorld(tipLocal - fwdLocal * Layout.CTRL_TOOL_LEN)
         val fw = bp.dirToWorld(fwdLocal)
         val q = fromTo(V3(0f, 0f, -1f), fw)
         val pose = CtrlPose(grip, Q4(q.x, q.y, q.z, q.w))
-        val wasHeld = controllers.injected?.second == true
-        controllers.injected = pose to pressed
-        if (pressed && !wasHeld) injectPress = true
+        controllers.inject(pose, pressed)
     }
-    private var injectPress = false
 
     // ------------------------------------------------------------------------------------------------ clay proxy
     fun updateProxy() {
@@ -1360,7 +1363,6 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
         }
         if (!ready) { hudFrame(pose); return }
         controllerFrame(now)
-        if (injectPress) { injectPress = false }
         handFrame(now)
         // dynamic mesh: ≤ 20 Hz, ≤ 6 chunks nearest the tip (design strokeRules.rate)
         if (now - lastMesh >= 50 && field.dirty.any { it } && !chunks.busy) {

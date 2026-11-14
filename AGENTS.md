@@ -41,7 +41,7 @@ ring, clay proxy, bench rim. Log `SRC hand|ctrl|gaze|handray|pointer`.
   `lesson done` (inject every step → S26) · `lesson ghost` · `lesson glaze` · `lesson next` · `lesson pick ±1`
 - input channels: `hand x y z 0|1` / `hand off` (right-hand pinch, bench metres) · `ctrl x y z 0|1` / `ctrl off`
   (tool tip, trigger) · `ctrlmount` / `ctrlback` · `handstroke <brush> [half|out]` · `ctrlstroke <brush> [half|out]` ·
-  `stick x y` (one push) · pointer path: `stroke <brush> line|zigzag|circle|spiral [s|m|l] [half]`, `poke`,
+  `stick x y` (one push) · `tiphome` (move knob back to x 0, y 0.2) · pointer path: `stroke <brush> line|zigzag|circle|spiral [s|m|l] [half]`, `poke`,
   `movetip dx dy`, `drag turn dx`
 - bench / window: `benchmove dx dy dz [hold]` · `benchend` · `recall` · `closepanel` · `reopen`
 - free play: `tool <b> [s|m|l]` · `size` · `yaw <deg>` · `turn90` · `mirror on|off` · `undo` · `glaze [<id>]` · `jar <id>`
@@ -63,6 +63,12 @@ S22 `benchmove 0.2 0 0 hold` · S23 `lesson 3` · S24 `lesson 1 step 2 t 0.6` ·
 `handstroke add|carve|smooth|pull`, `ctrlstroke …`.
 
 Screenshots: `adb -s <serial> emu screenrecord screenshot <dir>` (2560²); `screencap` tears on this emulator.
+
+## Controller trigger (v0.1.2, QA r2 q2-1)
+Real listener and `ctrl … 0|1` both feed `domain/TriggerEdges` (rising edge → one press counter; injected held wins while
+injected); `CtrlChannel.decide` picks BEGIN / MOVE / END / PUT_BACK / SWAP / AWAY. Log `CTRL trigger hand presses held act`.
+Scrape blade (q2-2): plane bites 0.25 r under the picked surface and re-takes the face when the blade slides > 45° onto
+another face; log `STROKE end … facets=`.
 
 ## Known facts
 - Probe 2026-11-11 (emulator-5562): replaceWithMeshModel 2.5–3 ms per chunk, 12–15 Hz updates during a 10 s add

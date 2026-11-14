@@ -58,6 +58,8 @@ class DebugCommandReceiver : BroadcastReceiver() {
             "release" -> s?.dragEnd()
             "poke" -> s?.onTap(Hit.Head, InputSource.UNKNOWN)
             "movetip" -> movetip(a[1].toFloat(), a[2].toFloat(), a.contains("half"))
+            // the tip back to the front centre (x 0, y 0.2) through the move knob (real path), so `stroke …` starts there
+            "tiphome" -> s?.let { sc -> movetip(-sc.sculptor.orgX, 0.2f - sc.sculptor.orgY, false) }
             "yaw" -> s?.setYaw(Math.toRadians(arg!!.toDouble()).toFloat())
             "turn90" -> Studio.turn90()
             "drag" -> if (arg == "turn") dragTurn(a[2].toFloat())

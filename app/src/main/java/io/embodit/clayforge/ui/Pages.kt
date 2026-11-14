@@ -383,29 +383,36 @@ private fun VolumeRow(volume: Float) {
             { val d = snap(local.floatValue); local.floatValue = d * 100f; Studio.setVolume(d); CfLog.i("VOLUME ${(d * 100).toInt()} (snapped)") },
         )
         Label(rs(R.string.volume_pct, (snap(local.floatValue) * 100).toInt()), "slider/volume/value", Modifier.width(56.dp), align = TextAlign.End)
+        // QA r2: mute on the settings page too (always visible, D15 / B31 exception), same toggle as every page header
+        val m = Studio.prefs.muted
+        ToolButton(if (m) rs(R.string.act_unmute) else rs(R.string.act_mute), if (m) R.drawable.ic_volume_off else R.drawable.ic_volume_up, "mute", Modifier.width(104.dp), on = m) { Studio.toggleMute() }
     }
 }
 
-/** 「怎么操作」(B19): one row per main action: what it does, the hand way, the controller way. */
+/** 「怎么操作」(B19): one row per main action: what it does, the hand way, the eye-hand way (QA r2), the controller way. */
 @Composable
 private fun ColumnScope.HowToPage() {
     val rows = listOf(
-        Triple(R.string.how_to_pick, R.string.how_to_pick_hand, R.string.how_to_pick_ctrl),
-        Triple(R.string.how_to_add, R.string.how_to_add_hand, R.string.how_to_add_ctrl),
-        Triple(R.string.how_to_carve, R.string.how_to_carve_hand, R.string.how_to_carve_ctrl),
-        Triple(R.string.how_to_smooth, R.string.how_to_smooth_hand, R.string.how_to_smooth_ctrl),
-        Triple(R.string.how_to_pull, R.string.how_to_pull_hand, R.string.how_to_pull_ctrl),
-        Triple(R.string.how_to_turn, R.string.how_to_turn_hand, R.string.how_to_turn_ctrl),
-        Triple(R.string.how_to_bench, R.string.how_to_bench_hand, R.string.how_to_bench_ctrl),
+        listOf(R.string.how_to_pick, R.string.how_to_pick_hand, R.string.how_to_pick_gaze, R.string.how_to_pick_ctrl),
+        listOf(R.string.how_to_add, R.string.how_to_add_hand, R.string.how_to_add_gaze, R.string.how_to_add_ctrl),
+        listOf(R.string.how_to_carve, R.string.how_to_carve_hand, R.string.how_to_carve_gaze, R.string.how_to_carve_ctrl),
+        listOf(R.string.how_to_smooth, R.string.how_to_smooth_hand, R.string.how_to_smooth_gaze, R.string.how_to_smooth_ctrl),
+        listOf(R.string.how_to_pull, R.string.how_to_pull_hand, R.string.how_to_pull_gaze, R.string.how_to_pull_ctrl),
+        listOf(R.string.how_to_turn, R.string.how_to_turn_hand, R.string.how_to_turn_gaze, R.string.how_to_turn_ctrl),
+        listOf(R.string.how_to_bench, R.string.how_to_bench_hand, R.string.how_to_bench_gaze, R.string.how_to_bench_ctrl),
     )
     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Header(rs(R.string.how_to), rs(R.string.how_to_sub), "howto")
-        for ((t, h, c) in rows) {
+        for ((t, h, g, c) in rows) {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(PicoTheme.colorScheme.fillTertiary).padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Label(rs(t), "howto/title", style = PicoTheme.typography.titleSmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     com.pico.spatial.ui.design.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_pan_tool), contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp)); Label(rs(h), "howto/hand", Modifier.weight(1f), secondary = true)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    com.pico.spatial.ui.design.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_visibility), contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp)); Label(rs(g), "howto/gaze", Modifier.weight(1f), secondary = true)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     com.pico.spatial.ui.design.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_gamepad), contentDescription = null, modifier = Modifier.size(18.dp))
@@ -432,7 +439,7 @@ fun ColumnScope.LearnPage() {
 private fun ColumnScope.LearnPick() {
     val l = Studio.lesson.lesson
     val z = zh()
-    val secs = 10 * l.steps.size + 5
+    val secs = Lessons.watchS[l.id] ?: (10 * l.steps.size + 5)
     val tool = rs(when (l.brush) { Brush.ADD -> R.string.brush_add; Brush.CARVE -> R.string.brush_carve; Brush.SMOOTH -> R.string.brush_smooth; Brush.PULL -> R.string.brush_pull })
     Centred {
         Header((if (z) l.titleZh else l.titleEn), rs(R.string.lesson_pick_line, if (z) l.pieceZh else l.pieceEn, l.steps.size), "pick")

@@ -89,6 +89,12 @@ object Lessons {
     // timing (design lessons.watch.speed: tool 2.5 cm/s, turntable 60°/s, 1.1 s per poke; fly-in 0.45 s)
     const val LEAD_S = 0.45f
     const val PAUSE_S = 2f
+
+    /**
+     * Watch time shown on the pick card (QA r2: the card said「约 35 秒」, the demos run 17–26 s). Measured on the
+     * emulator (QA r2: 26 / 22.6 / 25.5 / 16.9 s); LessonTest keeps them within 2 s of the players' durations.
+     */
+    val watchS = mapOf("bird" to 27, "bowl" to 23, "stone" to 26, "cat" to 17)
     fun opDur(op: Op, yawFrom: Float): Float = when (op) {
         is Op.Turn -> max(0.6f, abs(op.to - yawFrom) / 60f)
         is Op.Stroke -> max(2f, polyLen(op.pts) / 0.025f)

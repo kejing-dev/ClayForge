@@ -176,17 +176,23 @@ class Sculptor(val field: ClayField) {
         snap.copyFrom(field)
         field.clearTouched()
         phase = Phase.GATE; gateTravel = 0f; pressMs = nowMs; strokeChanged = false; zPush = 0f
-        plane = null; lastSurf = null; pullGrabbed = false; offSurface = false
+        plane = null; lastSurf = null; pullGrabbed = false; offSurface = false; facetSwitches = 0
         pressTip = tip
         pressSurf = if (absolute) nearestSurface(tip, size.r * 1.5f, snap) else tip
         // r5: the scrape plane is taken at the press point and kept for the whole stroke
-        if (brush == Brush.SMOOTH) plane = pickPlane(snap, toClay(pressSurf ?: tip), size.r)
+        if (brush == Brush.SMOOTH) plane = bladePlane(snap, toClay(pressSurf ?: tip), size.r)
         // r5: pull grabs at the press point (not after the start gate)
         if (brush == Brush.PULL) grabPull()
     }
 
     /** Press on the tool head (relative stroke): snapshot the field (the tip depth is found against it). */
-    fun pressHead(nowMs: Long) { absolute = false; begin(nowMs) }
+    fun pressHead(nowMs: Long) {
+        absolute = false
+        // QA r2 q2-2: the tip may have been found along another ray (a turn / reload refreshes it with eye = null);
+        // re-place it on this press's ray so the press point, the scrape plane and the drag all sit on the same face
+        placeTip(orgX, orgY)
+        begin(nowMs)
+    }
 
     /** Absolute stroke (hand pinch point / controller tool tip): the tip is [p] (bench coordinates). */
     fun pressAt(p: V3, nowMs: Long) {
@@ -269,6 +275,12 @@ class Sculptor(val field: ClayField) {
         lastSurf = at
         return if (from === at) { dabAt(at, DAB_AMOUNT * 0.5f); strokeChanged } else applyPath(from, at)
     }
+
+    /** How often this stroke's blade took a new face's plane (log / tests). */
+    var facetSwitches = 0; private set
+
+    /** One line for the log at release (QA r2 q2-2: why a stroke left the clay as it was). */
+    fun diag(): String = "phase=$phase abs=$absolute changed=$strokeChanged gate=${"%.3f".format(gateTravel)} tip=$tip org=(${"%.3f".format(orgX)},${"%.3f".format(orgY)}) hit=$lastHit eye=$eye facets=$facetSwitches plane=${plane?.let { "${it.first}/${it.second}" }}"
 
     /** Release. Returns the undo step if the stroke changed the clay. */
     fun release(): UndoStep? {
@@ -355,7 +367,10 @@ class Sculptor(val field: ClayField) {
     private fun dab(pVol: V3, amt: Float) {
         val r = size.r
         val c = toClay(pVol)
-        if (brush == Brush.SMOOTH && plane == null) plane = pickPlane(snap, c, r)
+        if (brush == Brush.SMOOTH && plane == null) plane = bladePlane(snap, c, r)
+        // QA r2 q2-2: the blade crossed onto another face (snapshot normal > 45° from the blade's): take that face's
+        // plane from here on, so a sweep from the block's corner onto its top keeps scraping instead of only notching
+        if (brush == Brush.SMOOTH) plane?.let { (_, pn) -> val n = snap.normalAt(c); if (n.dot(pn) < FACE_TURN_COS) { plane = bladePlane(snap, c, r); facetSwitches++ } }
         val centers = if (mirror && abs(c.x) >= r) listOf(c, V3(-c.x, c.y, c.z)) else listOf(c)
         for ((k, cc) in centers.withIndex()) when (brush) {
             Brush.ADD -> addKernel(cc, r, amt)
@@ -416,6 +431,15 @@ class Sculptor(val field: ClayField) {
         }
         if (w == 0f) return c to src.normalAt(c)
         return V3(cx / w, cy / w, cz / w) to V3(nx, ny, nz).normalized()
+    }
+
+    /**
+     * The blade's plane: [pickPlane] moved into the clay by [SCRAPE_BITE] × r (QA r2 q2-2: on a flat face the picked
+     * plane is the face itself, so a sweep across the block's top took nothing off; the blade now shaves a thin layer).
+     */
+    fun bladePlane(src: ClayField, c: V3, r: Float): Pair<V3, V3> {
+        val (pc, pn) = pickPlane(src, c, r)
+        return (pc - pn * (SCRAPE_BITE * r)) to pn
     }
 
     /**
@@ -618,6 +642,10 @@ class Sculptor(val field: ClayField) {
         const val DAB_AMOUNT = 0.22f
         const val POKE_AMOUNT = 0.45f
         const val SCRAPE_RATE = 0.5f
+        /** How deep the scrape blade bites under the picked plane, × r (QA r2 q2-2). */
+        const val SCRAPE_BITE = 0.25f
+        /** cos 45°: the blade re-takes the plane when it slides onto a face turned more than this (QA r2 q2-2). */
+        const val FACE_TURN_COS = 0.7071f
         const val MEAN_RATE = 0.3f
         const val UNDO_MAX = 30
         const val BUDGET_IN = 55_000

@@ -29,6 +29,8 @@ class LessonTest {
                 assertTrue("${l.id} step $si changes the clay", maxDiff(plan.starts[si], plan.ends[si]) > 0.3f)
             }
             println("METRIC lesson ${l.id} seconds=${"%.1f".format((l.steps.indices).sumOf { si -> StepPlayer(Sculptor(plan.starts[si].copy()).also { it.yaw = Math.toRadians(plan.yaws[si].toDouble()).toFloat() }, l.steps[si], l.brush).duration.toDouble() + Lessons.PAUSE_S })}")
+            val secs = (l.steps.indices).sumOf { si -> StepPlayer(Sculptor(plan.starts[si].copy()).also { it.yaw = Math.toRadians(plan.yaws[si].toDouble()).toFloat() }, l.steps[si], l.brush).duration.toDouble() + Lessons.PAUSE_S }
+            assertEquals("${l.id}: the pick card's seconds match the demo", secs, Lessons.watchS.getValue(l.id).toDouble(), 2.0)
             assertTrue("${l.id} takes 15–60 s", (l.steps.indices).sumOf { si -> StepPlayer(Sculptor(plan.starts[si].copy()).also { it.yaw = Math.toRadians(plan.yaws[si].toDouble()).toFloat() }, l.steps[si], l.brush).duration.toDouble() + Lessons.PAUSE_S } in 15.0..60.0)
         }
     }

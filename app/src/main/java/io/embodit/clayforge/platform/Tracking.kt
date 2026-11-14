@@ -78,8 +78,8 @@ data class CtrlPose(val position: V3, val rotation: Q4) {
  */
 class Controllers {
     private var provider: ControllerTrackingProvider? = null
-    private val trig = arrayOf(java.util.concurrent.atomic.AtomicBoolean(false), java.util.concurrent.atomic.AtomicBoolean(false))
-    private val trigPresses = arrayOf(AtomicInteger(0), AtomicInteger(0))
+    /** Trigger edges of both sources (real listener + debug injection) → one press counter (QA r2 q2-1). */
+    val edges = io.embodit.clayforge.domain.TriggerEdges()
     private val backPresses = AtomicInteger(0)
     private val stickX = AtomicInteger(0); private val stickY = AtomicInteger(0)
     private var backDown = false
@@ -91,9 +91,8 @@ class Controllers {
     private val listener = ControllerTrackingProvider.ControllerActionListener { a: ControllerActionData ->
         val l = runCatching { a.left.triggerPressed }.getOrDefault(false)
         val r = runCatching { a.right.triggerPressed }.getOrDefault(false)
-        if (l && !trig[0].get()) { trigPresses[0].incrementAndGet(); lastTriggerHand = 0 }
-        if (r && !trig[1].get()) { trigPresses[1].incrementAndGet(); lastTriggerHand = 1 }
-        trig[0].set(l); trig[1].set(r)
+        if (edges.set(0, l)) lastTriggerHand = 0
+        if (edges.set(1, r)) lastTriggerHand = 1
         val back = runCatching { a.right.bButtonPressed || a.left.yButtonPressed }.getOrDefault(false)
         if (back && !backDown) backPresses.incrementAndGet()
         backDown = back
@@ -117,8 +116,14 @@ class Controllers {
 
     fun stop() { runCatching { provider?.removeControllerActionListener(listener); provider?.stop() }; provider = null }
 
-    fun triggerHeld(hand: Int): Boolean = injected?.takeIf { hand == 1 }?.second ?: trig[hand].get()
-    fun takeTriggerPresses(hand: Int) = trigPresses[hand].getAndSet(0)
+    fun triggerHeld(hand: Int): Boolean = edges.held(hand)
+    fun takeTriggerPresses(hand: Int) = edges.take(hand)
+    /** Debug `ctrl x y z 0|1`: the right controller's pose + trigger; the trigger goes through [edges] like a real one. */
+    fun inject(pose: CtrlPose?, pressed: Boolean) {
+        if (pose == null) { injected = null; edges.clearInjected(1); return }
+        injected = pose to pressed
+        if (edges.set(1, pressed, injected = true)) lastTriggerHand = 1
+    }
     fun takeBackPresses() = backPresses.getAndSet(0)
     val stickXv: Float get() = java.lang.Float.intBitsToFloat(stickX.get())
     val stickYv: Float get() = java.lang.Float.intBitsToFloat(stickY.get())
