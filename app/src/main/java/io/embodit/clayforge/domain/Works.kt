@@ -36,6 +36,12 @@ data class Prefs(
     val lastGlaze: String = Glaze.CELADON.id,
     val tool: String = Brush.ADD.id,
     val size: String = ToolSize.M.id,
+    /** Last tab of the two clay modes: "learn" | "free" (design mainLine: reopen on the last one). */
+    val lastTab: String = "learn",
+    /** Lesson id → best score 0…1 (design lessons.progress); done = finished once. */
+    val lessonBest: Map<String, Float> = emptyMap(),
+    val lessonDone: Set<String> = emptySet(),
+    val lastLesson: Int = 0,
 )
 
 /**

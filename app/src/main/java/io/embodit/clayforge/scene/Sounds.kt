@@ -25,7 +25,7 @@ class Sounds(context: Context) {
     private var squishPath = 0f
 
     init {
-        for (n in listOf("squish_1", "squish_2", "squish_3", "scrape", "wood_tap_1", "wood_tap_2", "wood_tap_3", "jar_clink_1", "jar_clink_2", "kiln_roar", "kiln_ting")) {
+        for (n in listOf("squish_1", "squish_2", "squish_3", "scrape", "wood_tap_1", "wood_tap_2", "wood_tap_3", "jar_clink_1", "jar_clink_2", "kiln_roar", "kiln_ting", "kiln_latch")) {
             val rid = context.resources.getIdentifier(n, "raw", context.packageName)
             if (rid == 0) CfLog.w("SOUND missing raw/$n") else ids[n] = pool.load(context, rid, 1)
         }
@@ -54,15 +54,17 @@ class Sounds(context: Context) {
     }
 
     /** Sculpting feedback: add = a squish every 1.5 cm of path (and on poke); carve / smooth = scrape loop. */
-    fun stroke(b: Brush, poke: Boolean = false, pathM: Float = 0f) {
+    /** [demo] = the lesson's tool moving by itself: the same sounds 3 dB lower (design lessons.watch.sound). */
+    fun stroke(b: Brush, poke: Boolean = false, pathM: Float = 0f, demo: Boolean = false) {
+        val d = if (demo) -3f else 0f
         when (b) {
             Brush.ADD -> {
                 squishPath += pathM
-                if (poke || squishPath >= 0.015f) { squishPath = 0f; play("squish", 3, -12f) }
+                if (poke || squishPath >= 0.015f) { squishPath = 0f; play("squish", 3, -12f + d) }
             }
             Brush.CARVE, Brush.SMOOTH -> {
-                if (poke) { play("scrape", 1, if (b == Brush.SMOOTH) -18f else -14f, if (b == Brush.SMOOTH) 0.8f else 1f); return }
-                if (!scrapeOn) { scrapeOn = true; play("scrape", 1, if (b == Brush.SMOOTH) -18f else -14f, if (b == Brush.SMOOTH) 0.8f else 1f, loop = -1) }
+                if (poke) { play("scrape", 1, (if (b == Brush.SMOOTH) -18f else -14f) + d, if (b == Brush.SMOOTH) 0.8f else 1f); return }
+                if (!scrapeOn) { scrapeOn = true; play("scrape", 1, (if (b == Brush.SMOOTH) -18f else -14f) + d, if (b == Brush.SMOOTH) 0.8f else 1f, loop = -1) }
             }
             Brush.PULL -> {}
         }
@@ -77,6 +79,9 @@ class Sounds(context: Context) {
     fun jar() = play("jar_clink", 2, -10f)
     fun kilnRoar() = play("kiln_roar", 1, -8f)
     fun kilnTing() = play("kiln_ting", 1, -8f)
+    /** Door hinge / latch (design kiln sound group: open, latch「咔」). */
+    fun kilnLatch() = play("kiln_latch", 1, -10f)
+    fun kilnDoor() = play("wood_tap", 3, -14f, rate = 0.8f)
 
     fun stopAll() { strokeEnd(); streams.values.forEach { pool.stop(it) }; streams.clear(); pool.autoPause() }
     fun resume() = pool.autoResume()

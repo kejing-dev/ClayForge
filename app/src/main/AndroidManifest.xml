@@ -23,24 +23,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Default container: the Shared Space volume with clay, turntable, tool tray and kiln (design container.windows.studio) -->
-            <meta-data android:name="pico.spatial.windowcontainer.id" android:value="Studio" />
-            <!-- "2": Form.Volumetric -->
-            <meta-data android:name="pico.spatial.windowcontainer.style" android:value="2" />
-            <!-- width x height x depth, metres -->
-            <meta-data android:name="pico.spatial.windowcontainer.defaultsize" android:value="0.6x0.55x0.6" />
-            <meta-data android:name="pico.spatial.windowcontainer.defaultsize.unit" android:value="meters" />
-            <meta-data android:name="pico.spatial.windowcontainer.resizetype" android:value="0" />
-            <!-- "1": uniform resize only -->
-            <meta-data android:name="pico.spatial.windowcontainer.resizerestriction" android:value="1" />
-            <!-- "2": WorldScale.Fixed -->
-            <meta-data android:name="pico.spatial.windowcontainer.worldscaletype" android:value="2" />
-            <meta-data android:name="pico.spatial.windowcontainer.captionbar" android:value="0" />
-            <!-- "0": no material background behind the studio -->
-            <meta-data android:name="pico.spatial.windowcontainer.materialbackground" android:value="0" />
-            <!-- "0": VolumeAlignment.Gravity -->
-            <meta-data android:name="pico.spatial.windowcontainer.volumealignment" android:value="0" />
-            <meta-data android:name="pico.spatial.windowcontainer.volumebasepanel" android:value="0" />
+            <!-- container: STAGE_MIXED (design container.type: Full Space, passthrough). The control window is a
+                 Planar WindowContainer opened from the Stage (mainApp). Same stage metadata as beat-pad / teleop-dojo. -->
+            <meta-data android:name="pico.spatial.stage.id" android:value="ClayStage" />
+            <!-- "1": StageStyle.Mixed, passthrough + virtual content -->
+            <meta-data android:name="pico.spatial.stage.style" android:value="1" />
+            <meta-data android:name="pico.spatial.stage.immersion" android:value="0" />
+            <meta-data android:name="pico.spatial.stage.immersion_min" android:value="0" />
+            <meta-data android:name="pico.spatial.stage.immersion_max" android:value="0" />
         </activity>
     </application>
 

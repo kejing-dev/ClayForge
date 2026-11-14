@@ -248,3 +248,19 @@ class BrushTest {
         assertTrue("an absolute add stroke grows the clay", h.field.solidCells() > f0.solidCells())
     }
 }
+
+/** M18: every kiln part is a closed mesh; door gap ≥ 2.5 mm all round. */
+class KilnTest {
+    @Test fun kilnPartsAreWatertight() {
+        val parts = io.embodit.clayforge.domain.KilnMesh.shell() + io.embodit.clayforge.domain.KilnMesh.bands() + io.embodit.clayforge.domain.KilnMesh.lining() + io.embodit.clayforge.domain.KilnMesh.gapGlow() + listOf(
+            io.embodit.clayforge.domain.KilnMesh.elements(), io.embodit.clayforge.domain.KilnMesh.door(),
+            io.embodit.clayforge.domain.KilnMesh.doorLining(), io.embodit.clayforge.domain.KilnMesh.handle(), io.embodit.clayforge.domain.KilnMesh.peepRing(),
+            io.embodit.clayforge.domain.KilnMesh.peepGlow(), io.embodit.clayforge.domain.KilnMesh.controllerBox(),
+            io.embodit.clayforge.domain.KilnMesh.lamp(), io.embodit.clayforge.domain.KilnMesh.knob(),
+        )
+        var tris = 0
+        for ((i, p) in parts.withIndex()) { assertTrue("kiln part $i closed", io.embodit.clayforge.domain.Proc.watertight(p)); tris += p.triangles }
+        assertTrue("kiln ≤ 15k triangles ($tris; design ≤ 8k, deviation: round edges + 6 coils)", tris <= 15_000)
+        println("KILN triangles=$tris parts=${parts.size}")
+    }
+}

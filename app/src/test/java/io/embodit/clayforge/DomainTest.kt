@@ -144,7 +144,14 @@ class DomainTest {
     }
 
     // M13: chips outside the clay / kiln cylinders from both eyes
-    @Test fun panelsOutsideClayCylinder() { assertEquals(emptyList<String>(), Layout.panelsOutsideClayCylinder()) }
+    // M13 panelNotOccluded: nominal eye, every bench box (kiln, open door, clay at the door, chips, lesson panels) is out of the window
+    @Test fun panelNotOccluded() {
+        assertEquals(emptyList<String>(), Layout.windowOcclusion())
+        assertEquals(emptyList<String>(), Layout.windowOcclusion(wM = 0.52f, hM = 0.52f))
+    }
+
+    // L5: lesson caption / transport / score and chips clear the clay cylinder, tray, each other and the door sweep
+    @Test fun panelsClearEachOther() { assertEquals(emptyList<String>(), Layout.panelOverlaps()) }
 
     // M7: the tool in hand stays in the volume and off the tray tools at the extreme tips (design activeTool / lowTip)
     @Test fun toolBoundsAtExtremes() {
@@ -152,14 +159,50 @@ class DomainTest {
         for (t in tips) assertEquals("tip $t", emptyList<String>(), Layout.toolProblems(t))
     }
 
-    // M18: kiln parts never cut the clay cylinder; lid bottom ≥ 0.40
-    @Test fun kilnClearsTheClay() {
-        for (i in 0..100) assertEquals(emptyList<String>(), Layout.kilnProblems(i / 100f))
+    // M7 / M18: the turntable's L-shaped way into the kiln never cuts a wall; the door's sweep misses tray / chips / home
+    @Test fun kilnClearsTheClay() { assertEquals(emptyList<String>(), Layout.kilnProblems()) }
+
+    // D9 / D54: placeUpright only takes the heading; seated 1.2 m and standing 1.6 m both land the bench in reach
+    @Test fun placeUprightSeatedAndStanding() {
+        for (eyeY in listOf(1.2f, 1.6f)) for (pitch in listOf(-30f, 0f, 30f)) {
+            val p = Math.toRadians(pitch.toDouble()).toFloat()
+            val fwd = V3(0f, kotlin.math.sin(p), -kotlin.math.cos(p))
+            val b = Layout.placeUpright(V3(0.2f, eyeY, 0.1f), fwd)
+            assertEquals("eye $eyeY: bench 0.58 under the eye", eyeY - 0.58f, b.origin.y, 1e-4f)
+            assertEquals(0.62f, Layout.horiz(b.origin - V3(0.2f, eyeY, 0.1f)), 1e-4f)
+            assertEquals("pitch never reaches the yaw", 0f, Layout.angDiffDeg(b.yaw, 0f), 1e-3f)
+            // the clay front is within an arm (≤ 0.65 m from the shoulder ~ 0.25 m below the eye)
+            val clayFront = b.toWorld(V3(0f, 0.2f, 0.09f)); val shoulder = V3(0.2f, eyeY - 0.25f, 0.1f)
+            assertTrue("reach ${clayFront.dist(shoulder)}", clayFront.dist(shoulder) <= 0.65f)
+        }
     }
 
-    // D17: volume tap targets ≥ 4 cm and ≥ 2° at 1.75 m; gaps ≥ 1.5 cm and ≥ 0.3 × target
+    // profile 2026-10-28 四方位放置: facing N / E / S / W the bench's +z points back at the user (< 10°)
+    @Test fun placementFourDirections() {
+        for (deg in listOf(0f, 90f, 180f, 270f)) {
+            val a = Math.toRadians(deg.toDouble()).toFloat()
+            val fwd = V3(-kotlin.math.sin(a), 0f, -kotlin.math.cos(a))
+            val head = V3(1f, 1.5f, -2f)
+            val b = Layout.placeUpright(head, fwd)
+            val toUser = (head - b.origin).let { V3(it.x, 0f, it.z).normalized() }
+            val benchZ = b.dirToWorld(V3(0f, 0f, 1f))
+            assertTrue("facing $deg°", benchZ.dot(toUser) > kotlin.math.cos(Math.toRadians(10.0)).toFloat())
+        }
+    }
+
+    // design bench snap: in at 6 cm / 10°, out only past 9 cm / 15°
+    @Test fun benchSnapHysteresis() {
+        val home = Layout.BenchPose(V3(0f, 0.9f, -0.6f), 0f); val s = Layout.BenchSnap()
+        assertFalse(s.step(Layout.BenchPose(V3(0.07f, 0.9f, -0.6f), 0f), home))
+        assertTrue(s.step(Layout.BenchPose(V3(0.05f, 0.9f, -0.6f), 0f), home))
+        assertTrue("stays snapped at 8 cm", s.step(Layout.BenchPose(V3(0.08f, 0.9f, -0.6f), 0f), home))
+        assertFalse("lets go past 9 cm", s.step(Layout.BenchPose(V3(0.095f, 0.9f, -0.6f), 0f), home))
+        assertFalse(s.step(Layout.BenchPose(V3(0.0f, 0.9f, -0.6f), Math.toRadians(12.0).toFloat()), home))
+    }
+
+    // D17: bench tap targets ≥ 4 cm and ≥ 2° from the nominal eye (Full Space ~0.75 m); gaps ≥ 1.5 cm and ≥ 0.3 × target
     @Test fun tapTargetsAreBigEnough() {
-        val dist = 1.75f // design tapTargets: system default ~1.75 m, 2° ≈ 6.1 cm
+        val dist = 0.80f // design tapTargets: Full Space viewing distance 0.65–0.8 m
         fun deg(m: Float) = Math.toDegrees(2 * kotlin.math.atan((m / 2 / dist).toDouble())).toFloat()
         val targets = mapOf("tool w" to Layout.TOOL_BOX.x, "tool h" to Layout.TOOL_BOX.y, "head" to Layout.HEAD_D, "knob" to Layout.KNOB_D, "jar" to Layout.JAR_D, "chip w" to Layout.CHIP_W, "chip h" to Layout.CHIP_H)
         for ((n, s) in targets) { assertTrue("$n ${s}m", s >= 0.04f); assertTrue("$n ${deg(s)}°", deg(s) >= 2f) }
@@ -167,6 +210,11 @@ class DomainTest {
         assertTrue(toolGap >= 0.015f && toolGap >= 0.3f * Layout.TOOL_BOX.x)
         val jarGap = Layout.JAR_X[1] - Layout.JAR_X[0] - Layout.JAR_D
         assertTrue("jar gap $jarGap", jarGap >= 0.015f && jarGap >= 0.3f * Layout.JAR_D - 1e-4f)
+        val chipGap = Layout.CHIP_MIRROR.x - Layout.CHIP_TURN.x - Layout.CHIP_W
+        assertTrue("chip gap $chipGap", chipGap >= 0.015f && chipGap >= 0.018f - 1e-4f)
+        val tGapX = Layout.TRANSPORT[1].x - Layout.TRANSPORT[0].x - Layout.CHIP_W
+        val tGapY = Layout.TRANSPORT[0].y - Layout.TRANSPORT[2].y - Layout.CHIP_H
+        assertTrue("transport gaps $tGapX / $tGapY ≥ 2 cm", tGapX >= 0.02f - 1e-4f && tGapY >= 0.02f - 1e-4f)
     }
 
     // M6: GLB header / chunks and STL triangle count match the mesh
@@ -207,7 +255,8 @@ class DomainTest {
         assertEquals(Hit.Knob, Hit.resolvePath(listOf("knobBead", "knob")))
         assertEquals(Hit.Clay, Hit.resolvePath(listOf("clayProxy", "turn")))
         assertEquals(Hit.Ring, Hit.resolvePath(listOf("ring")))
-        assertNull(Hit.resolvePath(listOf("ttTop", "turn", "studioRoot")))
+        assertNull(Hit.resolvePath(listOf("ttTop", "turn", "benchRoot")))
+        assertEquals(Hit.Bench, Hit.resolvePath(listOf("benchEdge:2", "bench")))
     }
 }
 

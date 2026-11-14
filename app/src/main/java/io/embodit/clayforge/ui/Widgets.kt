@@ -171,4 +171,4 @@ fun Toggle(on: Boolean, label: String, name: String, onChange: (Boolean) -> Unit
 /** Wraps a row of controls with a consistent gap. */
 @Composable
 fun Line(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) =
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), content = content)
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp), content = content)

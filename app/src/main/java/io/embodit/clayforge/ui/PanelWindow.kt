@@ -28,22 +28,21 @@ import io.embodit.clayforge.PANEL_ID
 import io.embodit.clayforge.PANEL_TAG
 import io.embodit.clayforge.Page
 import io.embodit.clayforge.R
-import io.embodit.clayforge.STUDIO_ID
 import io.embodit.clayforge.Studio
 import io.embodit.clayforge.platform.CfLog
 import kotlinx.coroutines.delay
 import kotlin.system.exitProcess
 
-private val TAB_LABEL = mapOf(Page.SCULPT to R.string.tab_sculpt, Page.WORKS to R.string.tab_works, Page.SETTINGS to R.string.tab_settings)
-private val TAB_ICON = mapOf(Page.SCULPT to R.drawable.ic_pan_tool, Page.WORKS to R.drawable.ic_shelves, Page.SETTINGS to R.drawable.ic_settings)
+private val TAB_LABEL = mapOf(Page.LEARN to R.string.tab_learn, Page.FREE to R.string.tab_free, Page.WORKS to R.string.tab_works, Page.SETTINGS to R.string.tab_settings)
+private val TAB_ICON = mapOf(Page.LEARN to R.drawable.ic_school, Page.FREE to R.drawable.ic_pan_tool, Page.WORKS to R.drawable.ic_shelves, Page.SETTINGS to R.drawable.ic_settings)
 
-/** The control panel: one planar system window (MainWindow template) with the native TabBar (捏 / 作品 / 设置). */
+/** The control window: one planar system window (MainWindow template) with the native TabBar (课 / 自由捏 / 作品 / 设置, D3). */
 @Composable
 fun PanelWindow() {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
-        val obs = LifecycleEventObserver { _, e -> Studio.panelState = e.name; CfLog.i("PANEL ${e.name}"); Cf.onChips() }
+        val obs = LifecycleEventObserver { _, e -> Cf.window.onPanelLifecycle(e.name) }
         owner.lifecycle.addObserver(obs)
         onDispose { owner.lifecycle.removeObserver(obs) }
     }
@@ -55,7 +54,8 @@ fun PanelWindow() {
             Box(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 16.dp)) {
                     when (page) {
-                        Page.SCULPT -> SculptPage()
+                        Page.LEARN -> LearnPage()
+                        Page.FREE -> SculptPage()
                         Page.WORKS -> WorksPage()
                         Page.SETTINGS -> SettingsPage()
                     }
@@ -77,16 +77,18 @@ fun PanelWindow() {
 }
 
 /**
- * D26 / D44 exit: save, release sound, close BOTH windows (panel + studio volume), remove every task, end the process.
+ * D26 / D44 exit: save, release sound and trackers, close BOTH containers (control window + Stage), remove every task,
+ * end the process (五子棋 / 九路围棋: closing only the window left a recents entry).
  */
 suspend fun exitApp(context: Context, navigator: SpatialNavigator) {
-    CfLog.i("EXIT save + release + close panel + close studio + finishAndRemoveTask + exitProcess")
+    CfLog.i("EXIT save + release + close panel + close stage + finishAndRemoveTask + exitProcess")
+    Cf.window.exiting = true
     Studio.saveNow()
     runCatching { Studio.sound.release() }
-    runCatching { navigator.closeWindowContainer(PANEL_ID, PANEL_TAG) }.onFailure { CfLog.w("EXIT close panel: $it") }
+    runCatching { Cf.scene?.get()?.release() }
+    runCatching { (Cf.navigator ?: navigator).closeWindowContainer(PANEL_ID, PANEL_TAG) }.onFailure { CfLog.w("EXIT close panel: $it") }
     delay(150)
-    runCatching { (Cf.navigator ?: navigator).let { if (it === navigator) it.closeWindowContainer(STUDIO_ID, "") else it.closeWindowContainer() } }
-        .onFailure { CfLog.w("EXIT close studio: $it") }
+    runCatching { Cf.closeStage?.invoke() }.onFailure { CfLog.w("EXIT close stage: $it") }
     val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     repeat(2) { round ->
         delay(300)

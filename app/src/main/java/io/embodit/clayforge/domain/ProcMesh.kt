@@ -52,7 +52,8 @@ object Proc {
         val ny = if (down) -1f else 1f
         val c = m.v(0f, y, 0f, 0f, ny, 0f, 0.5f, 0.5f)
         for (s in 0..seg) { val a = 2 * PI.toFloat() * s / seg; m.v(r * cos(a), y, r * sin(a), 0f, ny, 0f, 0.5f + 0.5f * cos(a), 0.5f + 0.5f * sin(a)) }
-        for (s in 1..seg) if (down) m.tri(c, s, s + 1) else m.tri(c, s + 1, s)
+        // ring vertices are c + 1 … c + seg + 1 (v0.1.0 used absolute 1…seg: only right when the disc was the mesh's first part)
+        for (s in 1..seg) if (down) m.tri(c, c + s, c + s + 1) else m.tri(c, c + s + 1, c + s)
         return m
     }
 
@@ -83,7 +84,7 @@ object Proc {
     }
 
     /** A round rod (tube) from a to b, radius r, 12 sides. */
-    fun rod(a: V3, b: V3, r: Float, sides: Int = 12, m: PMesh = PMesh()): PMesh {
+    fun rod(a: V3, b: V3, r: Float, sides: Int = 12, m: PMesh = PMesh(), caps: Boolean = false): PMesh {
         val d = (b - a).normalized()
         val u = (if (kotlin.math.abs(d.y) < 0.9f) V3(0f, 1f, 0f) else V3(1f, 0f, 0f)).cross(d).normalized()
         val w = d.cross(u)
@@ -92,7 +93,15 @@ object Proc {
             val n = u * cos(ang) + w * sin(ang)
             for (p in listOf(a, b)) { val q = p + n * r; m.v(q.x, q.y, q.z, n.x, n.y, n.z, 0.5f, 0.5f) } }
         for (s in 0 until sides) { val i = base + s * 2; m.tri(i, i + 2, i + 1); m.tri(i + 1, i + 2, i + 3) }
+        if (caps) capRing(m, a, -d, (0 until sides).map { base + it * 2 }, outward = false).also { capRing(m, b, d, (0 until sides).map { base + it * 2 + 1 }, outward = true) }
         return m
+    }
+
+    /** Fan cap over a ring of existing vertices (positions reused, so the mesh stays closed). */
+    private fun capRing(m: PMesh, c: V3, n: V3, ring: List<Int>, outward: Boolean) {
+        val ci = m.v(c.x, c.y, c.z, n.x, n.y, n.z, 0.5f, 0.5f)
+        val k = ring.map { i -> m.v(m.pos[i * 3], m.pos[i * 3 + 1], m.pos[i * 3 + 2], n.x, n.y, n.z, 0.5f, 0.5f) }
+        for (s in k.indices) { val a = k[s]; val b = k[(s + 1) % k.size]; if (outward) m.tri(ci, a, b) else m.tri(ci, b, a) }
     }
 
     /** UV sphere. */
@@ -135,5 +144,86 @@ object Proc {
             for (i in 0 until n) { val a = ring[i]; val b = ring[(i + 1) % n]; if (xi == 0) m.tri(c, b, a) else m.tri(c, a, b) }
         }
         return m
+    }
+
+    /**
+     * Closed rounded box centred at [c], half extents [h], edge radius [r] (a sphere-swept inner box: smooth normals,
+     * seam vertices of neighbouring faces coincide, so it welds watertight). Planar uv per face × [uvPerM].
+     */
+    fun roundedBox(c: V3, h: V3, r: Float, seg: Int = 4, uvPerM: Float = 1f, m: PMesh = PMesh()): PMesh {
+        val rr = minOf(r, h.x, h.y, h.z)
+        fun coords(he: Float): List<Float> {
+            val out = ArrayList<Float>()
+            for (k in 0..seg) out += -he + rr - rr * cos(PI.toFloat() / 2 * k / seg)
+            for (k in seg downTo 0) out += he - rr + rr * cos(PI.toFloat() / 2 * k / seg)
+            return out.distinct()
+        }
+        val cx = coords(h.x); val cy = coords(h.y); val cz = coords(h.z)
+        val inner = V3(h.x - rr, h.y - rr, h.z - rr)
+        // faces: axis (0 x, 1 y, 2 z), sign; (u, v) axes chosen so (u × v) = outward normal
+        data class F(val axis: Int, val sign: Float, val ua: Int, val va: Int)
+        val faces = listOf(F(0, 1f, 1, 2), F(0, -1f, 2, 1), F(1, 1f, 2, 0), F(1, -1f, 0, 2), F(2, 1f, 0, 1), F(2, -1f, 1, 0))
+        val cs = listOf(cx, cy, cz); val hs = floatArrayOf(h.x, h.y, h.z); val ins = floatArrayOf(inner.x, inner.y, inner.z)
+        for (f in faces) {
+            val us = cs[f.ua]; val vs = cs[f.va]
+            val base = m.vertexCount
+            for (j in vs.indices) for (i in us.indices) {
+                val p = FloatArray(3)
+                p[f.axis] = f.sign * hs[f.axis]; p[f.ua] = us[i]; p[f.va] = vs[j]
+                val q = FloatArray(3) { k -> clampf(p[k], -ins[k], ins[k]) }
+                var nx = p[0] - q[0]; var ny = p[1] - q[1]; var nz = p[2] - q[2]
+                val l = sqrt(nx * nx + ny * ny + nz * nz)
+                if (l < 1e-9f) { nx = 0f; ny = 0f; nz = 0f; when (f.axis) { 0 -> nx = f.sign; 1 -> ny = f.sign; else -> nz = f.sign } } else { nx /= l; ny /= l; nz /= l }
+                val x = q[0] + nx * rr; val y = q[1] + ny * rr; val z = q[2] + nz * rr
+                m.v(c.x + x, c.y + y, c.z + z, nx, ny, nz, (us[i] + hs[f.ua]) * uvPerM, (vs[j] + hs[f.va]) * uvPerM)
+            }
+            val nu = us.size
+            // winding: (u × v) must equal the outward normal
+            val uDir = FloatArray(3).also { it[f.ua] = 1f }; val vDir = FloatArray(3).also { it[f.va] = 1f }
+            val cr = V3(uDir[1] * vDir[2] - uDir[2] * vDir[1], uDir[2] * vDir[0] - uDir[0] * vDir[2], uDir[0] * vDir[1] - uDir[1] * vDir[0])
+            val nrmV = FloatArray(3).also { it[f.axis] = f.sign }
+            val ccw = cr.x * nrmV[0] + cr.y * nrmV[1] + cr.z * nrmV[2] > 0
+            for (j in 0 until vs.size - 1) for (i in 0 until nu - 1) {
+                val a = base + j * nu + i; val b = a + 1; val d = a + nu; val e = d + 1
+                if (ccw) { m.tri(a, b, e); m.tri(a, e, d) } else { m.tri(a, e, b); m.tri(a, d, e) }
+            }
+        }
+        return m
+    }
+
+    /** A helical heating coil (closed tube ends capped by tiny discs skipped: a coil is read as a tube), from a to b. */
+    fun helix(a: V3, b: V3, coilR: Float, pitch: Float, tubeR: Float, sides: Int = 8, m: PMesh = PMesh()): PMesh {
+        val axis = b - a; val len = axis.length; val d = axis.normalized()
+        val u = (if (kotlin.math.abs(d.y) < 0.9f) V3(0f, 1f, 0f) else V3(1f, 0f, 0f)).cross(d).normalized()
+        val w = d.cross(u)
+        val turns = len / pitch
+        val steps = maxOf(8, (turns * 6).toInt())
+        fun at(t: Float): V3 { val ang = 2 * PI.toFloat() * turns * t; return a + d * (len * t) + (u * cos(ang) + w * sin(ang)) * coilR }
+        val base = m.vertexCount
+        for (k in 0..steps) {
+            val t = k / steps.toFloat()
+            val p = at(t); val tan = (at(minOf(1f, t + 1e-3f)) - at(maxOf(0f, t - 1e-3f))).normalized()
+            val n1 = (if (kotlin.math.abs(tan.y) < 0.9f) V3(0f, 1f, 0f) else V3(1f, 0f, 0f)).cross(tan).normalized(); val n2 = tan.cross(n1)
+            for (s in 0..sides) { val ang = 2 * PI.toFloat() * s / sides; val n = n1 * cos(ang) + n2 * sin(ang); val q = p + n * tubeR; m.v(q.x, q.y, q.z, n.x, n.y, n.z, t, s / sides.toFloat()) }
+        }
+        for (k in 0 until steps) for (s in 0 until sides) { val i = base + k * (sides + 1) + s; val j = i + sides + 1; m.tri(i, j, i + 1); m.tri(i + 1, j, j + 1) }
+        // close both ends (M18 watertight parts)
+        val t0 = (at(1e-3f) - at(0f)).normalized(); val t1 = (at(1f) - at(1f - 1e-3f)).normalized()
+        capRing(m, at(0f), -t0, (0 until sides).map { base + it }, outward = false)
+        capRing(m, at(1f), t1, (0 until sides).map { base + steps * (sides + 1) + it }, outward = true)
+        return m
+    }
+
+    /** Welded edge check: every edge of a closed mesh is shared by exactly two triangles (positions rounded to 0.01 mm). */
+    fun watertight(m: PMesh): Boolean {
+        val key = HashMap<Triple<Long, Long, Long>, Int>()
+        fun id(v: Int): Int { val k = Triple(Math.round(m.pos[v * 3] * 1e5), Math.round(m.pos[v * 3 + 1] * 1e5), Math.round(m.pos[v * 3 + 2] * 1e5)); return key.getOrPut(k) { key.size } }
+        val edges = HashMap<Long, Int>()
+        for (t in 0 until m.triangles) {
+            val a = id(m.idx[t * 3]); val b = id(m.idx[t * 3 + 1]); val c = id(m.idx[t * 3 + 2])
+            if (a == b || b == c || a == c) continue
+            for ((p, q) in listOf(a to b, b to c, c to a)) { val e = minOf(p, q).toLong() * 1_000_000 + maxOf(p, q); edges[e] = (edges[e] ?: 0) + 1 }
+        }
+        return edges.values.all { it == 2 }
     }
 }
