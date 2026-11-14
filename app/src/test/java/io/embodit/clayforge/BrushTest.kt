@@ -264,3 +264,16 @@ class KilnTest {
         println("KILN triangles=$tris parts=${parts.size}")
     }
 }
+
+/** drag-delta (2026-11-14): dragAmount is per event; 60 events of 2 mm add up to 12 cm, reset on the next press. */
+class DragTotalTest {
+    @Test fun sixtyStepsOfTwoMillimetresMakeTwelveCentimetres() {
+        val t = io.embodit.clayforge.scene.input.DragTotal()
+        var last = io.embodit.clayforge.scene.input.Offset3M(0f, 0f, 0f)
+        repeat(60) { last = t.add(io.embodit.clayforge.scene.input.Offset3M(0.002f, 0f, 0f)) }
+        assertEquals(0.12f, last.x, 1e-5f)
+        assertEquals(60, t.events)
+        t.reset()
+        assertEquals(0.002f, t.add(io.embodit.clayforge.scene.input.Offset3M(0.002f, 0f, 0f)).x, 1e-6f)
+    }
+}

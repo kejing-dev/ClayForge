@@ -288,7 +288,8 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
         for (id in PanelIds.all) {
             val h = Entity().named("holder:$id")
             if (id == PanelIds.HUD) root.addChild(h) else bench.addChild(h)
-            h.enabled = false
+            // hidden by scale + distance, never by `enabled` (an attachment under a disabled entity never shows, beat-pad HUD)
+            h.place(p = V3(0f, -20f, 0f), s = 0.001f)
             holders[id] = h
         }
         bind(attachments)
@@ -301,6 +302,7 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
             val h = holders[id] ?: continue
             val e = attachments.entity(id) ?: continue
             h.addChild(e); bound += id
+            CfLog.i("PANEL bound $id")
         }
     }
 
@@ -863,7 +865,7 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
         return drag != DragKind.NONE
     }
 
-    /** [total] = movement since the press in metres (the SDK's dragAmount is cumulative). */
+    /** [total] = movement since the press in metres (BoardInput sums the SDK's per-event dragAmount, DragTotal). */
     fun dragMove(total: V3) {
         val now = SystemClock.uptimeMillis()
         val prev = dragTotal
@@ -1342,7 +1344,11 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
         // first placement: head steady, or 2 s without a head → (0, 1.2, 0) looking −z
         if (benchPose == null) {
             if (pose != null && head.steady) { placeBench(Layout.placeUpright(pose.position, pose.forward), "start"); window.request("start") }
-            else if (now - startedMs > 2000) { placeBench(Layout.placeUpright(V3(0f, 1.2f, 0f), V3(0f, 0f, -1f)), "start/nohead"); window.request("start") }
+            else if (now - startedMs > 2000) { placeBench(Layout.placeUpright(V3(0f, 1.2f, 0f), V3(0f, 0f, -1f)), "start/nohead"); placedBlind = true; window.request("start") }
+        } else if (placedBlind && pose != null && head.steady) {
+            // the head came late (fallback at 2 s): set the bench up once more at the real head, unless it was moved
+            placedBlind = false
+            if (benchDragStart == null && now - startedMs < 15_000) animateBench(Layout.placeUpright(pose.position, pose.forward), 400, "start/head arrived")
         }
         recallFrame(now, pose)
         benchAnim?.let { (a, b, t0) ->
@@ -1398,6 +1404,7 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
         }
     }
     private var lastMesh = 0L
+    private var placedBlind = false
     private var lastLog = 0L
     private var f0 = 0
 
@@ -1429,9 +1436,8 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
     // ------------------------------------------------------------------------------------------------ chips & hud
     private fun panel(id: String, on: Boolean, p: V3? = null, q: Quat? = null) {
         val h = holders[id] ?: return
-        if (h.enabled != on) h.enabled = on
         if (panelShown[id] != on) panelShown[id] = on
-        if (!on || p == null) return
+        if (!on || p == null) { h.place(p = V3(0f, -20f, 0f), s = 0.001f); return }
         val (wdp, _) = PanelIds.sizeDp(id); val (wm, _) = PanelIds.sizeM(id)
         val s = wm / (wdp * dpM)
         h.place(p = p, q = q, s = s)
@@ -1469,7 +1475,6 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
         val f = V3(p.forward.x, 0f, p.forward.z).normalized()
         val at = p.position + f * 0.8f + V3(0f, -0.8f * 0.268f, 0f)
         val toEye = (p.position - at).let { V3(it.x, 0f, it.z).normalized() }
-        holders[PanelIds.HUD]?.let { h -> if (!h.enabled) h.enabled = true }
         val (wdp, _) = PanelIds.sizeDp(PanelIds.HUD); val (wm, _) = PanelIds.sizeM(PanelIds.HUD)
         holders[PanelIds.HUD]?.place(p = at, q = fromTo(V3(0f, 0f, 1f), toEye), s = wm / (wdp * dpM))
         if (panelShown[PanelIds.HUD] != true) panelShown[PanelIds.HUD] = true

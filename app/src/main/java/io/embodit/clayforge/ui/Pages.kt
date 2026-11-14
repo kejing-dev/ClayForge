@@ -432,18 +432,25 @@ fun ColumnScope.LearnPage() {
 private fun ColumnScope.LearnPick() {
     val l = Studio.lesson.lesson
     val z = zh()
-    val best = Studio.prefs.lessonBest[l.id]
-    val dur = Lessons.all.indexOf(l).let { (l.steps.size * 10) }
+    val secs = 10 * l.steps.size + 5
+    val tool = rs(when (l.brush) { Brush.ADD -> R.string.brush_add; Brush.CARVE -> R.string.brush_carve; Brush.SMOOTH -> R.string.brush_smooth; Brush.PULL -> R.string.brush_pull })
     Centred {
         Header((if (z) l.titleZh else l.titleEn), rs(R.string.lesson_pick_line, if (z) l.pieceZh else l.pieceEn, l.steps.size), "pick")
+        // the four lessons, this one marked (read-only list; ◀ ▶ switch, design learnPick 多选一)
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(PicoTheme.colorScheme.fillTertiary).padding(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Label(rs(R.string.lesson_pick_about, tool, secs), "pick/about", style = PicoTheme.typography.bodyLarge)
+            for ((k, les) in Lessons.all.withIndex()) {
+                val b = Studio.prefs.lessonBest[les.id]
+                val mark = if (les.id == l.id) "▶ " else "    "
+                Label(mark + (k + 1) + "  " + (if (z) les.pieceZh else les.pieceEn) + (if (b != null) "  ${(b * 100).toInt()}% ✓" else ""), "pick/row$k",
+                    secondary = les.id != l.id, style = PicoTheme.typography.labelLarge)
+            }
+        }
         Line {
             KButton(rs(R.string.lesson_prev), "lesson_prev", Modifier.weight(1f), icon = R.drawable.ic_chevron_left) { Studio.pickLesson(-1) }
             KButton(rs(R.string.lesson_next), "lesson_next", Modifier.weight(1f), icon = R.drawable.ic_chevron_right) { Studio.pickLesson(1) }
         }
-        Label(Lessons.all.joinToString("   ") { les -> val b = Studio.prefs.lessonBest[les.id]; (Lessons.all.indexOf(les) + 1).toString() + " " + (if (z) les.pieceZh else les.pieceEn) + (if (b != null) " ${(b * 100).toInt()}% ✓" else "") }, "pick/progress", secondary = true, style = PicoTheme.typography.labelMedium)
-        if (best != null) Label(rs(R.string.lesson_best, (best * 100).toInt()), "pick/best", secondary = true)
         KButton(rs(R.string.lesson_start), "lesson_start", Modifier.fillMaxWidth().height(72.dp), primary = true, enabled = Studio.lesson.planReady, icon = R.drawable.ic_play_arrow) { Studio.startLesson() }
-        @Suppress("UNUSED_EXPRESSION") dur
     }
 }
 

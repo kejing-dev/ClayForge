@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -188,8 +189,8 @@ private fun Chip(text: String, icon: Int, name: String, w: Int, h: Int, on: Bool
         colors = ButtonDefaults.buttonColors(containerColor = if (on) OnGreen else PrimaryBlue, contentColor = Color.White),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(40.dp))
-            Text(text = text, style = PicoTheme.typography.titleMedium, color = Color.White, textAlign = TextAlign.Center, maxLines = 2, onTextLayout = fits("chip/$name"))
+            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(44.dp))
+            Text(text = text, style = Big, color = Color.White, textAlign = TextAlign.Center, maxLines = 2, onTextLayout = fits("chip/$name"))
         }
     }
 }
@@ -206,12 +207,12 @@ private fun Caption(w: Int, h: Int) {
         Studio.lessonStage == LessonStage.TRY && l.passed -> rs(R.string.lesson_like)
         else -> if (zh) step.zh else step.en
     }
-    Column(Modifier.size(w.dp, h.dp).clip(RoundedCornerShape(28.dp)).background(CardBg).padding(horizontal = 26.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.size(w.dp, h.dp).clip(RoundedCornerShape(28.dp)).background(CardBg).padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = (if (zh) l.lesson.titleZh else l.lesson.titleEn) + " · " + (if (zh) l.lesson.pieceZh else l.lesson.pieceEn), style = PicoTheme.typography.titleMedium, color = Ink, modifier = Modifier.weight(1f), maxLines = 1, onTextLayout = fits("caption/title"))
-            Text(text = rs(R.string.lesson_step, l.si + 1, l.steps), style = PicoTheme.typography.titleMedium, color = InkSoft, maxLines = 1, onTextLayout = fits("caption/step"))
+            Text(text = (if (zh) l.lesson.titleZh else l.lesson.titleEn) + " · " + (if (zh) l.lesson.pieceZh else l.lesson.pieceEn), style = Big, color = Ink, modifier = Modifier.weight(1f), maxLines = 1, onTextLayout = fits("caption/title"))
+            Text(text = rs(R.string.lesson_step, l.si + 1, l.steps), style = Big, color = InkSoft, maxLines = 1, onTextLayout = fits("caption/step"))
         }
-        Text(text = body, style = PicoTheme.typography.titleMedium, color = Ink, maxLines = 3, onTextLayout = fits("caption/body"))
+        Text(text = body, style = Body, color = Ink, maxLines = 3, onTextLayout = fits("caption/body"))
     }
 }
 
@@ -222,7 +223,7 @@ private fun ScoreCard(w: Int, h: Int) {
     val pct = (l.score * 100).toInt()
     val c = if (l.passed) PassGreen else PrimaryBlue
     Column(Modifier.size(w.dp, h.dp).clip(RoundedCornerShape(26.dp)).background(CardBg).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = if (l.passed) rs(R.string.lesson_like_short, pct) else rs(R.string.lesson_score, pct), style = PicoTheme.typography.titleMedium, color = Ink, maxLines = 1, onTextLayout = fits("score/text"))
+        Text(text = if (l.passed) rs(R.string.lesson_like_short, pct) else rs(R.string.lesson_score, pct), style = Big, color = Ink, maxLines = 1, onTextLayout = fits("score/text"))
         Box(Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFFDDD6CC))) {
             Box(Modifier.fillMaxWidth(l.score.coerceIn(0.03f, 1f)).height(14.dp).clip(RoundedCornerShape(7.dp)).background(c))
         }
@@ -236,11 +237,17 @@ private fun Hud(scene: ClayScene, w: Int, h: Int) {
     Box(Modifier.size(w.dp, h.dp).clip(RoundedCornerShape(28.dp)).background(CardBg), contentAlignment = Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (t == "loading") { CircularProgressIndicator(modifier = Modifier.size(32.dp)); Box(Modifier.width(14.dp)) }
-            Text(text = when (t) { "loading" -> rs(R.string.hint_loading); "recall" -> rs(R.string.recall_hold); else -> rs(R.string.level_hint) }, style = PicoTheme.typography.titleMedium, color = Ink, maxLines = 2, onTextLayout = fits("hud/$t"))
+            Text(text = when (t) { "loading" -> rs(R.string.hint_loading); "recall" -> rs(R.string.recall_hold); else -> rs(R.string.level_hint) }, style = Big, color = Ink, maxLines = 2, onTextLayout = fits("hud/$t"))
         }
     }
 }
 
+/**
+ * Stage panels are scaled to their design size (N5: 1 dp = 0.8 mm here, holder scale ≈ 0.625 → 1 dp ≈ 0.5 mm), so
+ * 26 sp ≈ 13 mm Chinese glyphs (design: ≥ 12 mm, M21 / L5) and 44 dp icons ≈ 22 mm.
+ */
+private val Big = androidx.compose.ui.text.TextStyle(fontSize = 26.sp, lineHeight = 32.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+private val Body = androidx.compose.ui.text.TextStyle(fontSize = 25.sp, lineHeight = 31.sp)
 private val CardBg = Color(0xF2FBF8F2)
 private val Ink = Color(0xFF2A211B)
 private val InkSoft = Color(0xFF5A4E44)
