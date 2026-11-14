@@ -444,7 +444,9 @@ class Sculptor(val field: ClayField) {
                     val old = f[id]
                     val nv = when {
                         ft < old -> old + (ft - old) * rate * w
-                        sd > -0.12f * r -> old + (ft - old) * rate * 0.5f * w
+                        // fill only where clay already is (old > 0.15): the thin layer under a plane that floats above
+                        // the surface must not grow a film of loose specks (v0.1.1 hand stroke on the ball)
+                        sd > -0.12f * r && old > 0.15f -> old + (ft - old) * rate * 0.5f * w
                         else -> old
                     }
                     if (abs(nv - old) > 1e-6f) { f[id] = clampf(nv, 0f, 1f); any = true }

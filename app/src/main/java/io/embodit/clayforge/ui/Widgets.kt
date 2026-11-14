@@ -70,7 +70,7 @@ fun rs(@StringRes id: Int): String = LocalCfResources.current.getString(id)
 fun rs(@StringRes id: Int, vararg args: Any): String = LocalCfResources.current.getString(id, *args)
 
 /** D13 overflow log: every fixed-line Text reports `OVERFLOW <panel>/<control>` instead of hiding it. */
-fun fits(name: String): (TextLayoutResult) -> Unit = { r -> if (r.hasVisualOverflow) Log.w("ClayForge", "OVERFLOW $name") }
+fun fits(name: String): (TextLayoutResult) -> Unit = { r -> if (r.hasVisualOverflow) io.embodit.clayforge.platform.CfLog.w("OVERFLOW $name") }
 
 val RowH = 48.dp
 /** Primary container: PicoTheme interaction #3377FF gives white text 4.02:1; this blue gives 5.3:1 (D13). */

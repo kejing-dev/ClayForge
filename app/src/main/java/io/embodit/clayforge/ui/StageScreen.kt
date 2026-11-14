@@ -209,7 +209,7 @@ private fun Caption(w: Int, h: Int) {
     }
     Column(Modifier.size(w.dp, h.dp).clip(RoundedCornerShape(28.dp)).background(CardBg).padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = (if (zh) l.lesson.titleZh else l.lesson.titleEn) + " · " + (if (zh) l.lesson.pieceZh else l.lesson.pieceEn), style = Big, color = Ink, modifier = Modifier.weight(1f), maxLines = 1, onTextLayout = fits("caption/title"))
+            Text(text = rs(R.string.caption_title, l.li + 1, if (zh) l.lesson.pieceZh else l.lesson.pieceEn), style = Big, color = Ink, modifier = Modifier.weight(1f), maxLines = 2, onTextLayout = fits("caption/title"))
             Text(text = rs(R.string.lesson_step, l.si + 1, l.steps), style = Big, color = InkSoft, maxLines = 1, onTextLayout = fits("caption/step"))
         }
         Text(text = body, style = Body, color = Ink, maxLines = 3, onTextLayout = fits("caption/body"))

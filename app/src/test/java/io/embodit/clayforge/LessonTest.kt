@@ -28,6 +28,7 @@ class LessonTest {
                 assertEquals("${l.id} step $si equals the target", 0f, maxDiff(f, plan.ends[si]), 1e-6f)
                 assertTrue("${l.id} step $si changes the clay", maxDiff(plan.starts[si], plan.ends[si]) > 0.3f)
             }
+            println("METRIC lesson ${l.id} seconds=${"%.1f".format((l.steps.indices).sumOf { si -> StepPlayer(Sculptor(plan.starts[si].copy()).also { it.yaw = Math.toRadians(plan.yaws[si].toDouble()).toFloat() }, l.steps[si], l.brush).duration.toDouble() + Lessons.PAUSE_S })}")
             assertTrue("${l.id} takes 15–60 s", (l.steps.indices).sumOf { si -> StepPlayer(Sculptor(plan.starts[si].copy()).also { it.yaw = Math.toRadians(plan.yaws[si].toDouble()).toFloat() }, l.steps[si], l.brush).duration.toDouble() + Lessons.PAUSE_S } in 15.0..60.0)
         }
     }
@@ -60,6 +61,7 @@ class LessonTest {
                 val sh = Sculptor(h).also { it.yaw = Math.toRadians(plan.yaws[si].toDouble()).toFloat() }
                 StepPlayer(sh, step, l.brush).let { it.advance(it.sculptMid()) }
                 val half = plan.score(si, h)
+                println("METRIC lesson ${l.id} step ${si + 1} demo=${"%.2f".format(plan.score(si, u))} half=${"%.2f".format(half)}")
                 assertTrue("${l.id}/$si half done 25–75 % ($half)", half in 0.25f..0.75f)
             }
         }

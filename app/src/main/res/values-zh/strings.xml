@@ -130,4 +130,5 @@
     <string name="lesson_next_one">下一节</string>
     <string name="lesson_glaze">上釉进窑</string>
     <string name="lesson_pick_about">用%1$s刀 · 大约 %2$d 秒，看完换你试</string>
+    <string name="caption_title">第 %1$d 课 · %2$s</string>
 </resources>

@@ -65,7 +65,10 @@ class DebugCommandReceiver : BroadcastReceiver() {
             "undo" -> Studio.undo()
             "glaze" -> { if (Studio.phase == Phase.SCULPT) Studio.enterGlaze(); arg?.let { Glaze.of(it)?.let { g -> s?.onTap(Hit.Jar(g), InputSource.UNKNOWN) } } }
             "jar" -> Glaze.of(arg)?.let { s?.onTap(Hit.Jar(it), InputSource.UNKNOWN) }
-            "fire" -> { if (Studio.phase == Phase.SCULPT) Studio.enterGlaze(); Studio.fire(); if (arg == "hold") { delay(50); s?.holdKilnAt(a[2].toFloat()) } }
+            "fire" -> when (arg) {
+                "release" -> s?.holdKilnAt(null)
+                else -> { if (Studio.phase == Phase.SCULPT) Studio.enterGlaze(); if (Studio.phase == Phase.GLAZE) Studio.fire(); if (arg == "hold") s?.holdKilnAt(a[2].toFloat()) }
+            }
             "back" -> Studio.backToSculpt()
             "backclay" -> Studio.backToClay()
             "open" -> when (arg) {

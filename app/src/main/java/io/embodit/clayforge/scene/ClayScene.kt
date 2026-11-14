@@ -1483,7 +1483,7 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
     // ------------------------------------------------------------------------------------------------ kiln timeline
     private fun kilnTick(now: Long) {
         if (kilnStart == 0L) return
-        val t = (now - kilnStart) / 1000f
+        val t = kilnHold ?: ((now - kilnStart) / 1000f)
         fun seg(a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
         // door (degrees open)
         val door = when {
@@ -1536,8 +1536,12 @@ class ClayScene(private val context: Context, val window: WindowCtl) {
         lastDoorDeg = doorDeg; lastCarriage = c
     }
 
-    /** Debug `fire` at a fixed time (QA S11 captures): jump the timeline to [sec] and hold. */
-    fun holdKilnAt(sec: Float) { kilnStart = SystemClock.uptimeMillis() - (sec * 1000).toLong() }
+    /** Debug `fire hold <sec>` (QA S11 captures): freeze the timeline at [sec]; null = run on from there. */
+    fun holdKilnAt(sec: Float?) {
+        val now = SystemClock.uptimeMillis()
+        if (sec == null) { kilnHold?.let { kilnStart = now - (it * 1000).toLong() }; kilnHold = null } else kilnHold = sec
+    }
+    private var kilnHold: Float? = null
 
     /** Focus lost while firing: jump to the result (turntable home, door shut). */
     fun finishKilnNow() { if (kilnStart != 0L) kilnStart = SystemClock.uptimeMillis() - 5300 }

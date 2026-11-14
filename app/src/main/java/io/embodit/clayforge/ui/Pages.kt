@@ -119,7 +119,7 @@ private fun Header(title: String, sub: String?, name: String) {
 
 /** Short pages sit centred in the window (blank ≤ 25 %, D44); long ones simply fill it. */
 @Composable
-private fun ColumnScope.Centred(content: @Composable ColumnScope.() -> Unit) {
+private fun ColumnScope.Centred(gap: androidx.compose.ui.unit.Dp = 16.dp, content: @Composable ColumnScope.() -> Unit) {
     Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
         val density = androidx.compose.ui.platform.LocalDensity.current
         val hPx = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -132,7 +132,7 @@ private fun ColumnScope.Centred(content: @Composable ColumnScope.() -> Unit) {
             if (h > 0f) CfLog.i("BLANK state=${Studio.stateId()} lang=${Studio.prefs.lang} confirm=${Studio.confirmExit || Studio.confirmDelete} content=${"%.0f".format(with(density) { h.toDp().value })}dp window=${io.embodit.clayforge.PANEL_H_DP}dp blank=${"%.0f".format((win - h) / win * 100)}%")
         }
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).onGloballyPositioned { c -> hPx.floatValue = c.size.height.toFloat()
-        }, verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
+        }, verticalArrangement = Arrangement.spacedBy(gap), content = content)
     }
 }
 
@@ -338,7 +338,7 @@ fun ColumnScope.SettingsPage() {
     val context = LocalContext.current
     val navigator = LocalSpatialNavigator.current
     val p = Studio.prefs
-    Centred {
+    Centred(gap = 22.dp) {
         // D44: [叫回面前] [退出应用] on the first screen, top row (design panels.settings)
         if (!Studio.confirmExit) Line {
             KButton(rs(R.string.recall), "recall", Modifier.weight(1f), icon = R.drawable.ic_my_location) { Studio.recall() }

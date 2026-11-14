@@ -80,6 +80,7 @@ class BrushTest {
         sideways(sc)
         val r = ToolSize.M.r
         val d = disp(f0, f, tip, n, r)
+        println("METRIC brushEffect_${b.id}_${s.id} max=${"%.1f".format(d.max * 1000)}mm")
         if (b == Brush.ADD) {
             assertTrue("$s add max ${d.max} ≥ 0.4 r", d.max >= 0.4f * r)
             assertTrue("$s add volume grows", solid(f) > solid(f0))
@@ -143,6 +144,7 @@ class BrushTest {
         sc.release()
         val after = rough(f, tip, pc, pn, ToolSize.M.r)
         val d = disp(f0, f, tip, n, ToolSize.M.r)
+        println("METRIC brushEffect_smooth_${s.id} rough ${"%.2f".format(before * 1000)}→${"%.2f".format(after * 1000)}mm max=${"%.1f".format(d.max * 1000)}mm")
         assertTrue("$s scrape flattens: rough $before → $after (≥ 70 % less)", after <= before * 0.3f)
         assertTrue("$s scrape changes the mesh: max ${d.max} ≥ 0.1 r", abs(d.max) >= 0.1f * ToolSize.M.r)
     }
@@ -170,6 +172,7 @@ class BrushTest {
         // the top, 4 cm back from the front: grows at most a little
         val ot = V3(0f, 0.32f, 0.02f)
         val grow = (surfAlong(f0, ot, V3(0f, -1f, 0f)) ?: 0f) - (surfAlong(f, ot, V3(0f, -1f, 0f)) ?: 0f)
+        println("METRIC brushEffect_smooth_block cut=${"%.1f".format(cut * 1000)}mm topGrow=${"%.1f".format(grow * 1000)}mm")
         assertTrue("block edge cut $cut ≥ 0.3 r (tip $tip)", cut >= 0.3f * r)
         assertTrue("block top grows $grow ≤ 0.06 r", grow <= 0.06f * r)
     }
@@ -188,9 +191,9 @@ class BrushTest {
         return (surfAlong(f0, o, -n) ?: 0f) - (surfAlong(f, o, -n) ?: 0f)
     }
 
-    @Test fun brushEffect_pull_ball() { val d = pullOut(StartShape.BALL, 0.03f); assertTrue("ball pull 3 cm → $d", d >= 0.8f * 0.03f); assertTrue("ball pull 6 cm", pullOut(StartShape.BALL, 0.06f) >= 0.045f) }
-    @Test fun brushEffect_pull_egg() { val d = pullOut(StartShape.EGG, 0.03f); assertTrue("egg pull 3 cm → $d", d >= 0.8f * 0.03f); assertTrue("egg pull 6 cm", pullOut(StartShape.EGG, 0.06f) >= 0.045f) }
-    @Test fun brushEffect_pull_block() { val d = pullOut(StartShape.BLOCK, 0.03f); assertTrue("block pull 3 cm → $d", d >= 0.8f * 0.03f); assertTrue("block pull 6 cm", pullOut(StartShape.BLOCK, 0.06f) >= 0.045f) }
+    @Test fun brushEffect_pull_ball() { val d = pullOut(StartShape.BALL, 0.03f); println("METRIC pull ball 3cm=${"%.1f".format(d * 1000)}mm 6cm=${"%.1f".format(pullOut(StartShape.BALL, 0.06f) * 1000)}mm"); assertTrue("ball pull 3 cm → $d", d >= 0.8f * 0.03f); assertTrue("ball pull 6 cm", pullOut(StartShape.BALL, 0.06f) >= 0.045f) }
+    @Test fun brushEffect_pull_egg() { val d = pullOut(StartShape.EGG, 0.03f); println("METRIC pull egg 3cm=${"%.1f".format(d * 1000)}mm 6cm=${"%.1f".format(pullOut(StartShape.EGG, 0.06f) * 1000)}mm"); assertTrue("egg pull 3 cm → $d", d >= 0.8f * 0.03f); assertTrue("egg pull 6 cm", pullOut(StartShape.EGG, 0.06f) >= 0.045f) }
+    @Test fun brushEffect_pull_block() { val d = pullOut(StartShape.BLOCK, 0.03f); println("METRIC pull block 3cm=${"%.1f".format(d * 1000)}mm 6cm=${"%.1f".format(pullOut(StartShape.BLOCK, 0.06f) * 1000)}mm"); assertTrue("block pull 3 cm → $d", d >= 0.8f * 0.03f); assertTrue("block pull 6 cm", pullOut(StartShape.BLOCK, 0.06f) >= 0.045f) }
 
     /** K2: press, slide 2 cm along the surface, then pull out 3 cm: the bump grows at the press point. */
     @Test fun pullGrabsAtPress() {
@@ -275,5 +278,23 @@ class DragTotalTest {
         assertEquals(60, t.events)
         t.reset()
         assertEquals(0.002f, t.add(io.embodit.clayforge.scene.input.Offset3M(0.002f, 0f, 0f)).x, 1e-6f)
+    }
+}
+
+/** v0.1.1 emulator: an absolute (hand / controller) scrape along the ball's front left dark specks (a film of loose cells). */
+class ScrapeSpeckTest {
+    @Test fun absoluteScrapeLeavesNoLooseSpecks() {
+        val f = ClayField().apply { fromSdf(StartShape.BALL::sdf) }
+        val s = Sculptor(f).also { it.brush = Brush.SMOOTH; it.size = ToolSize.M }
+        s.placeTip(0f, 0.25f); val front = s.tip
+        s.pressAt(front + V3(-0.05f, 0f, 0f), 0)
+        for (i in 0..30) s.dragTo(front + V3(-0.05f + 0.1f * i / 30f, 0f, 0f), i * 40L)
+        s.release()
+        var iso = 0
+        for (k in 1 until 63) for (j in 1 until 63) for (i in 1 until 63) {
+            val id = ClayField.idx(i, j, k)
+            if (f.f[id] > 0.5f && listOf(1, -1, 64, -64, 4096, -4096).all { f.f[id + it] < 0.5f }) iso++
+        }
+        assertTrue("loose single cells $iso ≤ 1", iso <= 1)
     }
 }
