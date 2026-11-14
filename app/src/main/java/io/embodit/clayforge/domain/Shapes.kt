@@ -35,8 +35,8 @@ enum class StartShape(val id: String) {
     BALL("ball"), EGG("egg"), BLOCK("block");
 
     fun sdf(x: Float, y: Float, z: Float): Float = when (this) {
-        // Ø 0.18 ball, bottom flattened 1.5 cm, resting on y 0.07
-        BALL -> max(Sdf.sph(x, y, z, 0f, 0.145f, 0f, 0.09f), 0.07f - y)
+        // Ø 0.18 ball resting on y 0.07 (centre 0.155 as in the lessons' sample.html, design L1)
+        BALL -> max(Sdf.sph(x, y, z, 0f, 0.155f, 0f, 0.09f), 0.07f - y)
         // 0.15 × 0.21 egg standing up
         EGG -> max(Sdf.ell(x, y, z, 0f, 0.175f, 0f, 0.075f, 0.105f, 0.075f), 0.07f - y)
         // 0.15 × 0.13 × 0.15 block, 2 cm round corners

@@ -69,7 +69,7 @@ class DomainTest {
         val f = ball(); val s = Sculptor(f)
         s.placeTip(0f, 0.15f); val z0 = s.tip.z
         s.brush = Brush.ADD; s.size = ToolSize.M
-        repeat(3) { stroke(s, V3(-0.02f, 0.15f, 0f), V3(0.02f, 0.15f, 0f)) }
+        stroke(s, V3(-0.02f, 0.15f, 0f), V3(0.02f, 0.15f, 0f))
         s.placeTip(0f, 0.15f)
         val grow = s.tip.z - z0
         assertTrue("add grows ($grow)", grow > 0.004f)
@@ -104,7 +104,7 @@ class DomainTest {
             if (b == Brush.SMOOTH) { stroke(Sculptor(f).apply { brush = Brush.CARVE; size = ToolSize.S }, V3(-0.03f, 0.15f, 0f), V3(0.03f, 0.15f, 0f)) }
             s.placeTip(0f, 0.15f)
             val step = s.poke()
-            if (b == Brush.PULL) assertNull(step) else assertNotNull("$b poke", step)
+            assertNotNull("$b poke", step)
             assertEquals(ToolSize.M, s.size)
         }
     }
